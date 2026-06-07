@@ -1,0 +1,43 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const required = [
+  "PORT",
+  "LINE_CHANNEL_SECRET",
+  "LINE_CHANNEL_ACCESS_TOKEN",
+  "GOOGLE_SHEETS_SPREADSHEET_ID",
+  "GOOGLE_SHEETS_RANGE",
+  "AZURE_OPENAI_ENDPOINT",
+  "AZURE_OPENAI_API_KEY",
+  "AZURE_OPENAI_DEPLOYMENT_NAME",
+];
+
+for (const key of required) {
+  if (!process.env[key]) {
+    throw new Error(`Missing required env var: ${key}`);
+  }
+}
+
+if (!process.env.GOOGLE_SHEETS_CREDENTIALS_PATH && !process.env.GOOGLE_SHEETS_CREDENTIALS_JSON && !process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64) {
+  throw new Error("Missing Google Sheets credentials. Set GOOGLE_SHEETS_CREDENTIALS_PATH, GOOGLE_SHEETS_CREDENTIALS_JSON, or GOOGLE_SHEETS_CREDENTIALS_BASE64.");
+}
+
+export const env = {
+  PORT: Number(process.env.PORT),
+  LINE_CHANNEL_SECRET: process.env.LINE_CHANNEL_SECRET as string,
+  LINE_CHANNEL_ACCESS_TOKEN: process.env.LINE_CHANNEL_ACCESS_TOKEN as string,
+  GOOGLE_SHEETS_CREDENTIALS_PATH: process.env.GOOGLE_SHEETS_CREDENTIALS_PATH || "",
+  GOOGLE_SHEETS_CREDENTIALS_JSON: process.env.GOOGLE_SHEETS_CREDENTIALS_JSON || "",
+  GOOGLE_SHEETS_CREDENTIALS_BASE64: process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64 || "",
+  GOOGLE_SHEETS_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_SPREADSHEET_ID as string,
+  GOOGLE_SHEETS_RANGE: process.env.GOOGLE_SHEETS_RANGE as string,
+  AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT as string,
+  AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY as string,
+  AZURE_OPENAI_DEPLOYMENT_NAME: process.env.AZURE_OPENAI_DEPLOYMENT_NAME as string,
+  AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION || "2024-10-21",
+  LIFF_ID: process.env.LIFF_ID || process.env.LIFF_CHANNEL_ID || "",
+  AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY || "",
+  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION || "",
+  AZURE_SPEECH_ENDPOINT: process.env.AZURE_SPEECH_ENDPOINT || "",
+};

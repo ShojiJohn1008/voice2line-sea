@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>振り返り入力</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #637083;
+      --line: #d9e0e8;
+      --accent: #06c755;
+      --danger: #d93f3f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(100%, 680px);
+      margin: 0 auto;
+      padding: 28px 18px 32px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    p { margin: 0; }
+    .lead {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .panel {
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .mic-wrap {
+      display: grid;
+      place-items: center;
+      padding: 16px 0 20px;
+    }
+    .mic-button {
+      width: 132px;
+      height: 132px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 54px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(6, 199, 85, .28);
+    }
+    .mic-button.recording {
+      background: var(--danger);
+      box-shadow: 0 10px 24px rgba(217, 63, 63, .25);
+    }
+    .status {
+      min-height: 24px;
+      margin-top: 10px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+    .live {
+      min-height: 76px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    label {
+      display: block;
+      margin: 18px 0 8px;
+      font-weight: 700;
+    }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      font: inherit;
+      line-height: 1.7;
+    }
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button.action {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      background: #1d72d2;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #eef3f8;
+      color: #253244;
+    }
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .notice {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .error { color: var(--danger); }
+  </style>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+</head>
+<body>
+  <main>
+    <h1>音声入力</h1>
+    <p class="lead">話すだけで自動で記録・分類されます。ザックリでOK。</p>
+
+    <section class="panel">
+      <div class="mic-wrap">
+        <button id="mic" class="mic-button" type="button" aria-label="録音開始">🎙</button>
+        <p id="status" class="status">マイクを押すと録音を開始します</p>
+      </div>
+      <div id="live" class="live">認識中のテキストがここに表示されます。</div>
+
+      <label for="memo">記録する内容</label>
+      <textarea id="memo" placeholder="音声認識後に編集できます。キーボード入力もできます。"></textarea>
+
+      <div class="actions">
+        <button id="submit" class="action" type="button">記録する</button>
+        <button id="keyboard" class="action secondary" type="button">キーボードで入力</button>
+      </div>
+      <p id="notice" class="notice">患者個人情報は書かないでください。</p>
+    </section>
+  </main>
+  <script>
+    const micButton = document.getElementById("mic");
+    const statusEl = document.getElementById("status");
+    const liveEl = document.getElementById("live");
+    const memoEl = document.getElementById("memo");
+    const submitButton = document.getElementById("submit");
+    const keyboardButton = document.getElementById("keyboard");
+    const noticeEl = document.getElementById("notice");
+
+    let recognizer = null;
+    let recording = false;
+    let profile = null;
+
+    function setStatus(text, isError = false) {
+      statusEl.textContent = text;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function setNotice(text, isError = false) {
+      noticeEl.textContent = text;
+      noticeEl.classList.toggle("error", isError);
+    }
+
+    async function initLiff() {
+      const config = await fetch("/api/config").then((response) => response.json());
+      if (!config.liffId || !window.liff) {
+        setStatus("LIFF設定が未完了です。キーボード入力は使えます。", true);
+        return;
+      }
+
+      await liff.init({ liffId: config.liffId });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+      profile = await liff.getProfile();
+    }
+
+    async function createRecognizer() {
+      if (!window.SpeechSDK) {
+        throw new Error("音声認識ライブラリを読み込めませんでした。");
+      }
+
+      const tokenResponse = await fetch("/api/azure-speech-token");
+      if (!tokenResponse.ok) {
+        const payload = await tokenResponse.json().catch(() => ({}));
+        throw new Error(payload.error || "音声認識を利用できません。");
+      }
+      const { token, region } = await tokenResponse.json();
+      const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
+      speechConfig.speechRecognitionLanguage = "ja-JP";
+      const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+      const nextRecognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+      let finalText = memoEl.value.trim();
+      nextRecognizer.recognizing = (_sender, event) => {
+        const partial = event.result.text || "";
+        liveEl.textContent = [finalText, partial].filter(Boolean).join("\n");
+      };
+      nextRecognizer.recognized = (_sender, event) => {
+        if (event.result.reason === SpeechSDK.ResultReason.RecognizedSpeech && event.result.text) {
+          finalText = [finalText, event.result.text].filter(Boolean).join("\n");
+          memoEl.value = finalText;
+          liveEl.textContent = finalText;
+        }
+      };
+      nextRecognizer.canceled = (_sender, event) => {
+        setStatus(event.errorDetails || "音声認識が中断されました。キーボード入力を使ってください。", true);
+        stopRecording();
+      };
+
+      return nextRecognizer;
+    }
+
+    async function startRecording() {
+      try {
+        recognizer = await createRecognizer();
+        recognizer.startContinuousRecognitionAsync(() => {
+          recording = true;
+          micButton.classList.add("recording");
+          micButton.setAttribute("aria-label", "録音停止");
+          setStatus("録音中です。もう一度押すと停止します。");
+        }, (error) => {
+          setStatus(String(error), true);
+        });
+      } catch (error) {
+        setStatus(error.message || "マイクを利用できません。キーボード入力を使ってください。", true);
+        memoEl.focus();
+      }
+    }
+
+    function stopRecording() {
+      if (!recognizer) {
+        return;
+      }
+      recognizer.stopContinuousRecognitionAsync(() => {
+        recognizer.close();
+        recognizer = null;
+      });
+      recording = false;
+      micButton.classList.remove("recording");
+      micButton.setAttribute("aria-label", "録音開始");
+      setStatus("停止しました。内容を編集して記録できます。");
+    }
+
+    micButton.addEventListener("click", () => {
+      if (recording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+
+    keyboardButton.addEventListener("click", () => {
+      if (recording) stopRecording();
+      memoEl.focus();
+      setStatus("キーボード入力に切り替えました。");
+    });
+
+    submitButton.addEventListener("click", async () => {
+      const text = memoEl.value.trim();
+      if (!text) {
+        setNotice("記録する内容を入力してください。", true);
+        return;
+      }
+      if (!profile?.userId) {
+        setNotice("LINEユーザー情報を取得できません。LIFF設定を確認してください。", true);
+        return;
+      }
+
+      submitButton.disabled = true;
+      setNotice("記録しています...");
+      try {
+        const response = await fetch("/api/reflections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lineUserId: profile.userId,
+            displayName: profile.displayName,
+            text,
+            source: "voice",
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "記録できませんでした。");
+        }
+        memoEl.value = "";
+        liveEl.textContent = "認識中のテキストがここに表示されます。";
+        setNotice("記録しました。LINEにも確認を送っています。");
+      } catch (error) {
+        setNotice(error.message || "記録できませんでした。少し時間をおいて再度試してください。", true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    initLiff().catch((error) => {
+      setStatus(error.message || "LIFF初期化に失敗しました。", true);
+    });
+  </script>
+</body>
+</html>
