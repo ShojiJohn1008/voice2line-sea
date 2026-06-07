@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env*
+!.env.example
 google-service-account.json
 *service-account*.json
 dist/

@@ -180,6 +180,23 @@ npm start
 
 ### 4. 動作確認
 
+GitHub連携後、まずGitHubのリポジトリで:
+
+```text
+Actions → 最新のworkflow
+```
+
+を開き、緑のチェックになっているか確認します。
+
+失敗している場合は、エラーが出ているstepを開きます。よくある原因は以下です。
+
+| エラー | 対応 |
+|---|---|
+| `npm ci` 失敗 | `package-lock.json` がGitHubにpushされているか確認 |
+| `npm run build` 失敗 | ローカルで `npm run typecheck` と `npm run build` を実行して直す |
+| deploy失敗 | Azure App Service publish profile / GitHub Actions secretを作り直す |
+| 起動後に落ちる | App ServiceのEnvironment variables不足を確認 |
+
 デプロイ後:
 
 ```text
