@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { Client } from "@line/bot-sdk";
 import { categoryNames } from "../services/llm";
 import { recordReflection } from "../services/reflections";
+import { runNextFollowup } from "../services/followup";
 import { env } from "../utils/env";
 
 const router = express.Router();
@@ -73,6 +74,25 @@ router.post("/reflections", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "記録できませんでした。少し時間をおいて再度送ってください。" });
+  }
+});
+
+router.post("/followup/run", async (req: Request, res: Response) => {
+  try {
+    if (!env.FOLLOWUP_SECRET) {
+      res.status(503).json({ error: "FOLLOWUP_SECRET is not configured" });
+      return;
+    }
+    if (req.header("x-followup-secret") !== env.FOLLOWUP_SECRET) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+
+    const result = await runNextFollowup();
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "follow-up run failed" });
   }
 });
 

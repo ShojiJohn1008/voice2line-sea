@@ -2,7 +2,7 @@ import { google } from "googleapis";
 import fs from "fs";
 import path from "path";
 import { env } from "../utils/env";
-import { Reflection, ReflectionCategory } from "../models/reflection";
+import { FollowUpStatus, Reflection, ReflectionCategory } from "../models/reflection";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
@@ -11,7 +11,7 @@ function getSheetName() {
 }
 
 function getFixedRange() {
-  return `${getSheetName()}!A:I`;
+  return `${getSheetName()}!A:J`;
 }
 
 function getAuthClient() {
@@ -57,11 +57,12 @@ export async function appendReflection(reflection: Reflection): Promise<void> {
     reflection.cleanedText || "",
     reflection.categories.join(","),
     reflection.isShared ? "TRUE" : "FALSE",
+    reflection.followUpStatus || "",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
-    range: `${getSheetName()}!A${nextRow}:I${nextRow}`,
+    range: `${getSheetName()}!A${nextRow}:J${nextRow}`,
     valueInputOption: "RAW",
     requestBody: {
       values: [values],
@@ -79,6 +80,8 @@ function parseReflectionRow(row: unknown[]): Reflection | null {
     .split(",")
     .filter((value): value is ReflectionCategory => ["learned", "could_not", "next", "moyamoya", "other"].includes(value));
 
+  const followUpStatus = String(row[9] || "");
+
   return {
     id,
     lineUserId: String(row[1] || ""),
@@ -89,6 +92,7 @@ function parseReflectionRow(row: unknown[]): Reflection | null {
     cleanedText: String(row[6] || ""),
     categories,
     isShared: String(row[8]).toLowerCase() === "true",
+    followUpStatus: followUpStatus === "done" || followUpStatus === "dismissed" ? followUpStatus : "",
   };
 }
 
@@ -115,6 +119,44 @@ export async function appendReflectionIfNew(reflection: Reflection): Promise<boo
   }
   await appendReflection(reflection);
   return true;
+}
+
+export async function updateReflectionFollowUpStatus(id: string, status: Exclude<FollowUpStatus, "">): Promise<boolean> {
+  const auth = getAuthClient();
+  const sheets = google.sheets({ version: "v4", auth });
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    range: getFixedRange(),
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex((row) => String(row[0] || "") === id);
+  if (rowIndex === -1) {
+    return false;
+  }
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    range: `${getSheetName()}!J${rowIndex + 1}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[status]],
+    },
+  });
+  return true;
+}
+
+export async function getOpenNextReflections(days: number): Promise<Reflection[]> {
+  const rows = await getAllReflections();
+  const threshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  return rows
+    .filter((item) => item.categories.includes("next"))
+    .filter((item) => !item.followUpStatus)
+    .filter((item) => {
+      const postedAt = new Date(item.createdAt);
+      return !Number.isNaN(postedAt.getTime()) && postedAt >= threshold;
+    });
 }
 
 export async function getRecentReflections(lineUserId: string, days: number) {

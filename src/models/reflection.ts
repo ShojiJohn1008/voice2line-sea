@@ -1,5 +1,7 @@
 export type ReflectionCategory = "learned" | "could_not" | "next" | "moyamoya" | "other";
 
+export type FollowUpStatus = "" | "done" | "dismissed";
+
 export interface Reflection {
   id: string;
   lineUserId: string;
@@ -10,4 +12,5 @@ export interface Reflection {
   cleanedText?: string;
   categories: ReflectionCategory[];
   isShared: boolean;
+  followUpStatus?: FollowUpStatus;
 }

@@ -1,10 +1,11 @@
 import express, { Request, Response } from "express";
-import { AudioEventMessage, Client, MessageEvent, middleware as lineMiddleware, TextEventMessage, WebhookEvent } from "@line/bot-sdk";
+import { AudioEventMessage, Client, MessageEvent, middleware as lineMiddleware, PostbackEvent, TextEventMessage, WebhookEvent } from "@line/bot-sdk";
 import { categoryNames } from "../services/llm";
 import { getRecentReflections } from "../services/sheets";
 import { env } from "../utils/env";
 import { Reflection } from "../models/reflection";
 import { recordReflection } from "../services/reflections";
+import { handleFollowupPostback } from "../services/followup";
 import { streamToBuffer, transcribeAudio } from "../services/speech";
 
 const router = express.Router();
@@ -149,6 +150,13 @@ async function handleAudioMessage(event: AudioMessageEvent) {
   }
 }
 
+async function handlePostbackEvent(event: PostbackEvent) {
+  const reply = await handleFollowupPostback(event.postback.data);
+  if (reply && event.replyToken) {
+    await lineClient.replyMessage(event.replyToken, { type: "text", text: reply });
+  }
+}
+
 async function handleFollowEvent(event: WebhookEvent) {
   if (event.type !== "follow") {
     return;
@@ -175,6 +183,8 @@ router.post("/", async (req: Request, res: Response) => {
         await handleTextMessage(event as TextMessageEvent);
       } else if (event.type === "message" && event.message.type === "audio") {
         await handleAudioMessage(event as AudioMessageEvent);
+      } else if (event.type === "postback") {
+        await handlePostbackEvent(event as PostbackEvent);
       } else if (event.type === "follow") {
         await handleFollowEvent(event);
       }

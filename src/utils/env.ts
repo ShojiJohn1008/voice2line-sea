@@ -40,4 +40,8 @@ export const env = {
   AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY || "",
   AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION || "",
   AZURE_SPEECH_ENDPOINT: process.env.AZURE_SPEECH_ENDPOINT || "",
+  FOLLOWUP_CRON: process.env.FOLLOWUP_CRON || "0 7 * * 1",
+  FOLLOWUP_TIMEZONE: process.env.FOLLOWUP_TIMEZONE || "Asia/Tokyo",
+  FOLLOWUP_LOOKBACK_DAYS: Number(process.env.FOLLOWUP_LOOKBACK_DAYS || 14),
+  FOLLOWUP_SECRET: process.env.FOLLOWUP_SECRET || "",
 };

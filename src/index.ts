@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import { lineRouter, lineMiddleware } from "./routes/line";
 import { apiRouter } from "./routes/api";
+import { startFollowupScheduler } from "./services/followup";
 import { env } from "./utils/env";
 
 const app = express();
@@ -13,4 +14,5 @@ app.get("/health", (req, res) => res.send("OK"));
 const port = Number(process.env.PORT || env.PORT);
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  startFollowupScheduler();
 });
