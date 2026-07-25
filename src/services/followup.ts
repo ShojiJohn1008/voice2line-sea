@@ -67,7 +67,7 @@ export async function runNextFollowup(): Promise<{ users: number; items: number 
     const asked = sorted.slice(0, MAX_ITEMS_PER_USER);
     const remainder = sorted.length - asked.length;
 
-    const introLines = ["【次やりたいことチェック】", "前に記録した「次やりたいこと」、その後どうなった？"];
+    const introLines = ["【1週間のまとめToDo】", "この1〜2週間で記録した「次やりたいこと」、その後どうなった？"];
     if (remainder > 0) {
       introLines.push(`（ほかにも${remainder}件あるよ。次回また聞くね）`);
     }

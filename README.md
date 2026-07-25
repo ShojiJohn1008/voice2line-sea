@@ -57,7 +57,7 @@ AZURE_OPENAI_API_VERSION=2024-10-21
 AZURE_SPEECH_KEY=
 AZURE_SPEECH_REGION=japaneast
 AZURE_SPEECH_ENDPOINT=
-FOLLOWUP_CRON=0 7 * * 1
+FOLLOWUP_CRON=0 18 * * 1
 FOLLOWUP_TIMEZONE=Asia/Tokyo
 FOLLOWUP_LOOKBACK_DAYS=14
 FOLLOWUP_SECRET=
@@ -117,7 +117,7 @@ https://ngrokのURL/webhook
 
 `next` カテゴリで記録された振り返りのうち、未完了のものを週1回LINEでプッシュして「どうなった？」と聞き返します。
 
-- デフォルトは毎週月曜7:00（JST）。`FOLLOWUP_CRON` / `FOLLOWUP_TIMEZONE` で変更、`FOLLOWUP_CRON=off` で無効化できます。
+- デフォルトは毎週月曜18:00（JST）。`FOLLOWUP_CRON` / `FOLLOWUP_TIMEZONE` で変更、`FOLLOWUP_CRON=off` で無効化できます。
 - 対象は直近 `FOLLOWUP_LOOKBACK_DAYS`（デフォルト14日）以内の未完了 `next`。1回の追い掛けは最大4件で、古いものから聞きます。
 - 各項目のボタンをタップすると、スプレッドシートのJ列（`followUpStatus`）が更新されます。
 
